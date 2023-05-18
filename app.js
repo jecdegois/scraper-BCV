@@ -1,19 +1,41 @@
-const puppeteer = require("puppeteer");
+const express = require('express');
+const axios = require("axios");
+const cheerio = require("cheerio");
+const https = require("https");
 
-(async () => {
-  const browser = await puppeteer.launch({
-    headless: true,
-    defaultViewport: null,
-  });
-  const page = await browser.newPage();
+const agent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
-  await page.goto("https://www.bcv.org.ve/", {
-    waitUntil: "domcontentloaded",
-  });
+const app2 = express();
+app2.use(express.json());
 
-  const dolarValue = await page.$eval("#dolar", (el) => el.innerText);
+async function app() {
+  try {
+    const resp = await axios.get("https://www.bcv.org.ve/", {
+      httpsAgent: agent,
+    });
 
-  console.log(`El valor del dólar es: ${dolarValue}`);
 
-  await browser.close();
-})();
+    const $ = cheerio.load(resp.data);
+    const dolarValue = $("#dolar strong").text().trim();
+
+
+    app2.get('/', (req,res) => {
+      res.json({
+        dolarValue
+      })
+    })
+
+    app2.listen(8080, () => {
+      console.log(`servidor corriendo en el puerto ${8080}`);
+    });
+
+
+    console.log({ dolarValue });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+app();
